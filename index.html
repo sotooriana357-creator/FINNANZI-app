@@ -1,252 +1,260 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>FINNANZI - Control de Gastos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FINNANZI - Control de Gastos</title>
+
+  <!-- Fuente moderna -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Chart.js CDN (para donuts en reportes) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header class="topbar">
-        <div class="container topbar-inner">
-            <div class="brand">
-                <span class="logo-icon">💰</span>
-                <h1>FINNANZI</h1>
-            </div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="logo-icon">💰</span>
+        <h1>FINNANZI</h1>
+      </div>
 
-            <div class="topbar-controls">
-                <div class="currency">Moneda: Bs (BOB)</div>
-                <div class="theme">
-                    <label for="theme-select">Tema</label>
-                    <select id="theme-select">
-                        <option value="claro">Claro</option>
-                        <option value="oscuro">Oscuro</option>
-                    </select>
-                </div>
-            </div>
+      <div class="topbar-controls">
+        <div class="currency">Moneda: Bs (BOB)</div>
+        <div class="theme">
+          <label for="theme-select">Tema</label>
+          <select id="theme-select">
+            <option value="claro">Claro</option>
+            <option value="oscuro">Oscuro</option>
+          </select>
         </div>
-
-        <nav class="topnav">
-            <div class="container topnav-inner">
-                <a href="#" class="nav-link active" data-section="dashboard">Dashboard</a>
-                <a href="#" class="nav-link" data-section="transactions">Transacciones</a>
-                <a href="#" class="nav-link" data-section="goals">Metas</a>
-                <a href="#" class="nav-link" data-section="reports">Reportes</a>
-                <a href="#" class="nav-link" data-section="reminders">Recordatorios</a>
-                <a href="#" class="nav-link" data-section="settings">Configuración</a>
-            </div>
-        </nav>
-    </header>
-
-    <main class="container main-grid">
-        <!-- Dashboard -->
-        <section id="dashboard" class="section active">
-            <div class="cards-grid">
-                <div class="card balance-card">
-                    <div class="card-head">
-                        <h2>💰 Balance Total</h2>
-                    </div>
-                    <div class="card-body center">
-                        <div id="total-balance" class="big-amount">Bs. 0.00</div>
-                        <div class="sub-totals">
-                            <span id="total-income" class="positive">Bs. 0.00</span>
-                            <span id="total-expense" class="negative">Bs. 0.00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head"><h3>📋 Últimas Transacciones</h3></div>
-                    <div id="widget-transactions" class="card-body small-list">
-                        <p>No hay transacciones recientes</p>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head"><h3>🎯 Metas</h3></div>
-                    <div id="widget-goals" class="card-body small-list">
-                        <p>No hay metas activas</p>
-                    </div>
-                </div>
-
-                <div class="card wide">
-                    <div class="card-head"><h3>📊 Resumen por Categoría</h3></div>
-                    <div id="category-summary" class="card-body">
-                        <!-- JS llena esto -->
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Transacciones -->
-        <section id="transactions" class="section">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-head"><h3>➕ Registrar Transacción</h3></div>
-                    <div class="card-body">
-                        <form id="transaction-form" class="form">
-                            <div class="form-row">
-                                <label for="transaction-type">Tipo</label>
-                                <select id="transaction-type" required>
-                                    <option value="">Selecciona un tipo</option>
-                                    <option value="income">Ingreso</option>
-                                    <option value="expense">Gasto</option>
-                                </select>
-                            </div>
-
-                            <div class="form-row">
-                                <label for="transaction-amount">Monto (Bs.)</label>
-                                <input type="number" id="transaction-amount" step="0.01" min="0" required />
-                            </div>
-
-                            <div class="form-row">
-                                <label for="transaction-category">Categoría</label>
-                                <select id="transaction-category" required>
-                                    <option value="">Selecciona una categoría</option>
-                                </select>
-                            </div>
-
-                            <div class="form-row">
-                                <label for="transaction-description">Descripción</label>
-                                <input type="text" id="transaction-description" required />
-                            </div>
-
-                            <div class="form-row">
-                                <label for="transaction-date">Fecha</label>
-                                <input type="date" id="transaction-date" required />
-                            </div>
-
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Agregar Transacción</button>
-                                <button type="button" id="clear-transaction-form" class="btn btn-secondary">Limpiar</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head"><h3>📋 Historial de Transacciones</h3></div>
-                    <div id="transaction-history" class="card-body transaction-list">
-                        <p>No hay transacciones registradas</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Metas -->
-        <section id="goals" class="section">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-head"><h3>🎯 Crear Meta</h3></div>
-                    <div class="card-body">
-                        <form id="goal-form" class="form">
-                            <div class="form-row">
-                                <label for="goal-name">Nombre</label>
-                                <input id="goal-name" type="text" required />
-                            </div>
-                            <div class="form-row">
-                                <label for="goal-target">Monto objetivo (Bs.)</label>
-                                <input id="goal-target" type="number" step="0.01" min="0" required />
-                            </div>
-                            <div class="form-row">
-                                <label for="goal-deadline">Fecha límite</label>
-                                <input id="goal-deadline" type="date" required />
-                            </div>
-                            <div class="form-row">
-                                <label for="goal-description">Descripción</label>
-                                <textarea id="goal-description" rows="3"></textarea>
-                            </div>
-                            <div class="form-actions">
-                                <button class="btn btn-warning" type="submit">Crear Meta</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-head"><h3>📈 Mis Metas</h3></div>
-                    <div id="goals-list" class="card-body goal-list">
-                        <p>No hay metas</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Reportes -->
-        <section id="reports" class="section">
-            <div class="card">
-                <div class="card-head"><h3>📊 Reportes</h3></div>
-                <div class="card-body">
-                    <div class="report-controls">
-                        <div class="form-row inline">
-                            <label for="report-date">Selecciona fecha</label>
-                            <input type="date" id="report-date" />
-                        </div>
-                        <div class="form-row inline">
-                            <button id="generate-report-day" class="btn btn-primary">Reporte Día</button>
-                            <button id="generate-report-week" class="btn btn-primary">Reporte Semana</button>
-                        </div>
-                    </div>
-
-                    <div id="report-content" class="report-content">
-                        <p>Genera un reporte por día o por semana</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Recordatorios -->
-        <section id="reminders" class="section">
-            <div class="card">
-                <div class="card-head"><h3>🔔 Recordatorios</h3></div>
-                <div class="card-body">
-                    <div class="form-row">
-                        <label><input type="checkbox" id="reminder-daily" checked /> Recordatorio diario</label>
-                    </div>
-                    <div class="form-row">
-                        <label for="reminder-time">Hora</label>
-                        <input type="time" id="reminder-time" value="20:00" />
-                    </div>
-
-                    <div class="reminders-list" id="active-reminders">
-                        <p>No hay recordatorios activos</p>
-                    </div>
-                    <div style="margin-top:12px;">
-                        <button id="enable-reminders" class="btn btn-success">Activar Recordatorios</button>
-                        <button id="test-reminder" class="btn btn-secondary">Probar Recordatorio</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Settings (simple) -->
-        <section id="settings" class="section">
-            <div class="card">
-                <div class="card-head"><h3>⚙️ Configuración</h3></div>
-                <div class="card-body">
-                    <p>Ajustes de la aplicación (tema, moneda, etc.)</p>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Floating widget (balance + quick add button).
-         ELIMINÉ el + junto al texto del balance que te molestaba — el botón sigue existiendo como botón circular separado -->
-    <div id="floating-widget" class="floating-widget">
-        <div class="floating-balance">
-            <span>Balance</span>
-            <div id="floating-balance-amount" class="balance-small positive">Bs. 0.00</div>
-        </div>
-        <button id="add-quick-transaction" class="floating-btn" title="Agregar transacción rápida">+</button>
+      </div>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            <p>FINNANZI - Aplicación de Control de Gastos &copy; <span id="year"></span></p>
-        </div>
-    </footer>
+    <nav class="topnav">
+      <div class="container topnav-inner">
+        <a href="#" class="nav-link active" data-section="dashboard">Dashboard</a>
+        <a href="#" class="nav-link" data-section="transactions">Transacciones</a>
+        <a href="#" class="nav-link" data-section="goals">Metas</a>
+        <a href="#" class="nav-link" data-section="reports">Reportes</a>
+        <a href="#" class="nav-link" data-section="reminders">Recordatorios</a>
+        <a href="#" class="nav-link" data-section="settings">Configuración</a>
+      </div>
+    </nav>
+  </header>
 
-    <script src="js/app.js"></script>
+  <main class="container main-grid">
+    <!-- Dashboard -->
+    <section id="dashboard" class="section active">
+      <div class="cards-grid">
+        <div class="card balance-card">
+          <div class="card-head">
+            <h2>💰 Balance Total</h2>
+          </div>
+          <div class="card-body center">
+            <div id="total-balance" class="big-amount">Bs. 0.00</div>
+            <div class="sub-totals">
+              <span id="total-income" class="positive">Bs. 0.00</span>
+              <span id="total-expense" class="negative">Bs. 0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>📋 Últimas Transacciones</h3></div>
+          <div id="widget-transactions" class="card-body small-list">
+            <p>No hay transacciones recientes</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>🎯 Metas</h3></div>
+          <div id="widget-goals" class="card-body small-list">
+            <p>No hay metas activas</p>
+          </div>
+        </div>
+
+        <div class="card wide">
+          <div class="card-head"><h3>📊 Resumen por Categoría</h3></div>
+          <div id="category-summary" class="card-body">
+            <p>No hay datos para el resumen</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Transacciones -->
+    <section id="transactions" class="section">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>➕ Registrar Transacción</h3></div>
+          <div class="card-body">
+            <form id="transaction-form" class="form" autocomplete="off">
+              <div class="form-row">
+                <label for="transaction-type">Tipo</label>
+                <select id="transaction-type" required>
+                  <option value="">Selecciona un tipo</option>
+                  <option value="income">Ingreso</option>
+                  <option value="expense">Gasto</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label for="transaction-amount">Monto (Bs.)</label>
+                <input type="number" id="transaction-amount" step="0.01" min="0" required />
+              </div>
+
+              <div class="form-row">
+                <label for="transaction-category">Categoría</label>
+                <select id="transaction-category" required>
+                  <option value="">Selecciona una categoría</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label for="transaction-description">Descripción</label>
+                <input type="text" id="transaction-description" required />
+              </div>
+
+              <div class="form-row">
+                <label for="transaction-date">Fecha</label>
+                <input type="date" id="transaction-date" required />
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Agregar</button>
+                <button type="button" id="clear-transaction-form" class="btn btn-secondary">Limpiar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>📋 Historial de Transacciones</h3></div>
+          <div id="transaction-history" class="card-body transaction-list">
+            <p>No hay transacciones registradas</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metas -->
+    <section id="goals" class="section">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>🎯 Crear Meta</h3></div>
+          <div class="card-body">
+            <form id="goal-form" class="form">
+              <div class="form-row">
+                <label for="goal-name">Nombre</label>
+                <input id="goal-name" type="text" required />
+              </div>
+              <div class="form-row">
+                <label for="goal-target">Monto objetivo (Bs.)</label>
+                <input id="goal-target" type="number" step="0.01" min="0" required />
+              </div>
+              <div class="form-row">
+                <label for="goal-deadline">Fecha límite</label>
+                <input id="goal-deadline" type="date" required />
+              </div>
+              <div class="form-row">
+                <label for="goal-description">Descripción</label>
+                <textarea id="goal-description" rows="3"></textarea>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-warning" type="submit">Crear Meta</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>📈 Mis Metas</h3></div>
+          <div id="goals-list" class="card-body goal-list">
+            <p>No hay metas</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reportes -->
+    <section id="reports" class="section">
+      <div class="card">
+        <div class="card-head"><h3>📊 Reportes</h3></div>
+        <div class="card-body">
+          <div class="report-controls">
+            <div class="form-row inline">
+              <label for="report-date">Selecciona fecha</label>
+              <input type="date" id="report-date" />
+            </div>
+            <div class="form-row inline">
+              <button id="generate-report-day" class="btn btn-primary">Reporte Día</button>
+              <button id="generate-report-week" class="btn btn-primary">Reporte Semana</button>
+            </div>
+          </div>
+
+          <div id="report-content" class="report-content">
+            <p>Genera un reporte por día o por semana. Verás donuts con Ingresos vs Gastos y desglose por categoría.</p>
+
+            <div id="report-charts" class="donut-row" style="margin-top:12px;">
+              <!-- canvases de Chart.js se generan dinámicamente -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recordatorios -->
+    <section id="reminders" class="section">
+      <div class="card">
+        <div class="card-head"><h3>🔔 Recordatorios</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <label><input type="checkbox" id="reminder-daily" checked /> Recordatorio diario</label>
+          </div>
+          <div class="form-row">
+            <label for="reminder-time">Hora</label>
+            <input type="time" id="reminder-time" value="20:00" />
+          </div>
+
+          <div class="reminders-list" id="active-reminders">
+            <p>No hay recordatorios activos</p>
+          </div>
+          <div style="margin-top:12px;">
+            <button id="enable-reminders" class="btn btn-success">Activar Recordatorios</button>
+            <button id="test-reminder" class="btn btn-secondary">Probar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="section">
+      <div class="card">
+        <div class="card-head"><h3>⚙️ Configuración</h3></div>
+        <div class="card-body">
+          <p>Ajustes de la aplicación.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating widget (balance + quick add button) -->
+  <div id="floating-widget" class="floating-widget" aria-hidden="false">
+    <div class="floating-balance">
+      <span>Balance</span>
+      <div id="floating-balance-amount" class="balance-small positive">Bs. 0.00</div>
+    </div>
+    <button id="add-quick-transaction" class="floating-btn" title="Agregar transacción rápida">+</button>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p>FINNANZI - Aplicación de Control de Gastos &copy; <span id="year"></span></p>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
 </body>
 </html>
