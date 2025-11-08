@@ -1,369 +1,310 @@
-// FINNANZI - versión limpia
-// - Donuts (Chart.js) para reportes día/semana
-// - Limpia formularios al agregar
-// - Eliminar transacción borra en localStorage
-// - Guarda todo en localStorage
-// - Respetando paleta de colores (verde principal), sin opción "pastel"
+/* FINNANZI - Minimalista (desde cero)
+   - Navegación por secciones (no todo en una pantalla)
+   - Transacciones: agregar, borrar (sin confirmación), limpiar formulario
+   - Metas con % y barra de progreso
+   - Reportes día/semana con donuts (Chart.js)
+   - Persistencia en localStorage
+*/
 
-// ---------------- constantes y datos ----------------
-const LS_TX = 'finnanzi-transactions';
-const LS_GOALS = 'finnanzi-goals';
-const LS_REM = 'finnanzi-reminders';
+/* ---------- Keys y estado ---------- */
+const LS_TX = 'finnanzi_tx_v1';
+const LS_GOALS = 'finnanzi_goals_v1';
 
-let transactions = [];
-let goals = [];
-let reminders = [];
+let transactions = []; // {id, type, amount, category, desc, date, ts}
+let goals = [];        // {id, name, target, current}
 
-const categories = [
-  { id:1, name:'Alimentación', type:'expense'},
-  { id:2, name:'Transporte', type:'expense'},
-  { id:3, name:'Entretenimiento', type:'expense'},
-  { id:4, name:'Educación', type:'expense'},
-  { id:5, name:'Salud', type:'expense'},
-  { id:6, name:'Vivienda', type:'expense'},
-  { id:7, name:'Salario', type:'income'},
-  { id:8, name:'Inversiones', type:'income'},
-  { id:9, name:'Regalos', type:'income'},
-  { id:10, name:'Otros', type:'both'}
+/* Categorías predeterminadas */
+const CATEGORIES = [
+  'Alimentación','Transporte','Entretenimiento','Educación','Salud','Vivienda','Salario','Inversiones','Regalos','Otros'
 ];
 
-// Chart.js chart references (para destruir antes de crear nuevo)
+/* Chart refs (para destruir antes de rehacer) */
 let chartOverview = null;
 let chartCategories = null;
 
-// ---------------- init ----------------
+/* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  loadStorage();
-  initTheme();
+  // Cargar
+  loadState();
+
+  // Setup UI
   setupNavigation();
+  setupCategoryOptions();
   setupForms();
-  setupWidgets();
+  setupQuickAdd();
   setupReports();
-  updateUI();
+  renderAll();
 
-  // fechas por defecto
+  // Fechas por defecto
   const today = new Date().toISOString().split('T')[0];
-  const txDate = document.getElementById('transaction-date');
-  if (txDate) txDate.value = today;
-  const rpDate = document.getElementById('report-date');
-  if (rpDate) rpDate.value = today;
-  const gd = document.getElementById('goal-deadline');
-  if (gd) gd.valueAsDate = new Date(Date.now() + 30*24*60*60*1000);
-
-  document.getElementById('year').textContent = new Date().getFullYear();
+  document.getElementById('tx-date').value = today;
+  const rp = document.getElementById('report-date');
+  if (rp) rp.value = today;
 });
 
-// ---------------- storage ----------------
-function loadStorage(){
-  const s = localStorage.getItem(LS_TX);
-  const g = localStorage.getItem(LS_GOALS);
-  const r = localStorage.getItem(LS_REM);
-  transactions = s ? JSON.parse(s) : [];
-  goals = g ? JSON.parse(g) : [];
-  reminders = r ? JSON.parse(r) : [];
+/* ---------- Storage ---------- */
+function loadState(){
+  try {
+    const s = localStorage.getItem(LS_TX);
+    const g = localStorage.getItem(LS_GOALS);
+    transactions = s ? JSON.parse(s) : [];
+    goals = g ? JSON.parse(g) : [];
+  } catch(e){
+    transactions = []; goals = [];
+    console.error('Error parseando localStorage', e);
+  }
 }
-
-function saveStorage(){
+function saveState(){
   localStorage.setItem(LS_TX, JSON.stringify(transactions));
   localStorage.setItem(LS_GOALS, JSON.stringify(goals));
-  localStorage.setItem(LS_REM, JSON.stringify(reminders));
 }
 
-// ---------------- theme ----------------
-function initTheme(){
-  const sel = document.getElementById('theme-select');
-  if (!sel) return;
-  sel.value = 'claro';
-  sel.addEventListener('change', e => {
-    if (e.target.value === 'oscuro') document.documentElement.style.setProperty('--bg','#0b1220');
-    else document.documentElement.style.removeProperty('--bg');
-  });
-}
-
-// ---------------- navigation ----------------
+/* ---------- Navigation ---------- */
 function setupNavigation(){
-  const links = document.querySelectorAll('.nav-link');
-  links.forEach(l => {
-    l.addEventListener('click', e => {
-      e.preventDefault();
-      links.forEach(x => x.classList.remove('active'));
-      l.classList.add('active');
-      const id = l.getAttribute('data-section');
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      const sec = document.getElementById(id);
-      if (sec) sec.classList.add('active');
-      window.scrollTo(0,0);
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const sec = btn.getAttribute('data-section');
+      showSection(sec);
     });
+  });
+
+  // botones internos para facilitar flujo
+  document.getElementById('goto-transactions').addEventListener('click', () => {
+    activateTab('transactions');
+  });
+  document.getElementById('goto-goals').addEventListener('click', () => {
+    activateTab('transactions');
+    // focus on goal form
+    setTimeout(()=> document.getElementById('goal-name').focus(), 150);
   });
 }
 
-// ---------------- forms & tx ----------------
+function activateTab(sectionId){
+  const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('data-section') === sectionId);
+  if (btn) btn.click();
+}
+
+function showSection(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- Category options ---------- */
+function setupCategoryOptions(){
+  const sel = document.getElementById('tx-category');
+  sel.innerHTML = '<option value="">Categoría</option>';
+  CATEGORIES.forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+/* ---------- Forms: tx and goals ---------- */
 function setupForms(){
-  fillCategorySelect();
+  const txForm = document.getElementById('tx-form');
+  txForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    addTransactionFromForm();
+  });
 
-  const form = document.getElementById('transaction-form');
-  const clearBtn = document.getElementById('clear-transaction-form');
-
-  if (form){
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      addTransactionFromForm();
-    });
-  }
-
-  if (clearBtn){
-    clearBtn.addEventListener('click', () => {
-      form.reset();
-      document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
-      document.getElementById('transaction-type').focus();
-    });
-  }
+  document.getElementById('tx-clear').addEventListener('click', () => {
+    txForm.reset();
+    document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('tx-type').focus();
+  });
 
   const goalForm = document.getElementById('goal-form');
-  if (goalForm){
-    goalForm.addEventListener('submit', e => {
-      e.preventDefault();
-      addGoalFromForm();
-    });
-  }
-}
-
-function fillCategorySelect(){
-  const sel = document.getElementById('transaction-category');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Selecciona una categoría</option>';
-  categories.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    sel.appendChild(opt);
+  goalForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    addGoalFromForm();
+  });
+  document.getElementById('goal-clear').addEventListener('click', () => {
+    goalForm.reset();
+    document.getElementById('goal-name').focus();
   });
 }
 
 function addTransactionFromForm(){
-  const type = document.getElementById('transaction-type').value;
-  const amount = parseFloat(document.getElementById('transaction-amount').value) || 0;
-  const catId = parseInt(document.getElementById('transaction-category').value) || null;
-  const desc = (document.getElementById('transaction-description').value || '').trim();
-  const date = document.getElementById('transaction-date').value || new Date().toISOString().split('T')[0];
+  const type = document.getElementById('tx-type').value;
+  const amount = parseFloat(document.getElementById('tx-amount').value) || 0;
+  const category = document.getElementById('tx-category').value || 'Otros';
+  const date = document.getElementById('tx-date').value || new Date().toISOString().split('T')[0];
+  const desc = document.getElementById('tx-desc').value.trim();
 
-  if (!type || amount <= 0 || !catId) {
-    notify('Completa tipo, monto y categoría', 'error');
-    return;
+  if (!type || amount <= 0) {
+    toast('Completa tipo y monto (mayor a 0)', 'error'); return;
   }
 
-  const catObj = categories.find(c => c.id === catId);
   const tx = {
-    id: Date.now(),
-    type,
-    amount,
-    category: catObj ? catObj.name : 'Otros',
-    description: desc || (type === 'income' ? 'Ingreso' : 'Gasto'),
-    date,
-    timestamp: new Date().toISOString()
+    id: Date.now() + Math.floor(Math.random()*999),
+    type, amount: parseFloat(amount), category, desc: desc || (type === 'income' ? 'Ingreso' : 'Gasto'), date, ts: new Date().toISOString()
   };
 
   transactions.push(tx);
-  saveStorage();
-  updateUI();
+  saveState();
+  renderAll();
 
-  // limpiar formulario y mantener fecha actual
-  const form = document.getElementById('transaction-form');
-  form.reset();
-  document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('transaction-type').focus();
-
-  notify('Transacción agregada', 'success');
+  // limpiar formulario (sin perder la fecha actual)
+  document.getElementById('tx-form').reset();
+  document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tx-type').focus();
+  // si una meta existe y es income -> sumar a la meta más reciente? (opcional) — por ahora no se asigna
+  toast('Transacción agregada', 'success');
 }
 
 function addGoalFromForm(){
-  const name = (document.getElementById('goal-name').value || '').trim();
+  const name = document.getElementById('goal-name').value.trim();
   const target = parseFloat(document.getElementById('goal-target').value) || 0;
-  const deadline = document.getElementById('goal-deadline').value;
-  const desc = (document.getElementById('goal-description').value || '').trim();
-  if (!name || target <= 0) { notify('Completa nombre y monto objetivo', 'error'); return; }
-  const g = { id: Date.now(), name, target, current:0, deadline, description:desc, completed:false };
+  if (!name || target <= 0) { toast('Nombre y monto objetivo requeridos', 'error'); return; }
+  const g = { id: Date.now()+Math.floor(Math.random()*999), name, target: parseFloat(target), current: 0 };
   goals.push(g);
-  saveStorage();
-  updateUI();
+  saveState();
+  renderAll();
   document.getElementById('goal-form').reset();
-  notify('Meta creada', 'success');
+  toast('Meta creada', 'success');
 }
 
-// quick add floating button
-function setupWidgets(){
-  const addBtn = document.getElementById('add-quick-transaction');
-  if (addBtn) addBtn.addEventListener('click', quickAdd);
-  const enableBtn = document.getElementById('enable-reminders');
-  if (enableBtn) enableBtn.addEventListener('click', toggleReminders);
-  const testBtn = document.getElementById('test-reminder');
-  if (testBtn) testBtn.addEventListener('click', ()=> { createReminder('Prueba', 'Recordatorio de prueba'); notify('Recordatorio creado','success'); });
+/* ---------- Quick add (FAB) ---------- */
+function setupQuickAdd(){
+  const fab = document.getElementById('quick-add');
+  fab.addEventListener('click', () => {
+    // quick modal-less add via prompts (simple para móvil)
+    const amt = prompt('Monto (Bs.):');
+    if (!amt || isNaN(amt)) return;
+    const isInc = confirm('¿Es un ingreso? Aceptar = Ingreso, Cancelar = Gasto');
+    const cat = prompt('Categoría (opcional):', 'Otros') || 'Otros';
+    const desc = prompt('Descripción (opcional):', isInc ? 'Ingreso' : 'Gasto') || (isInc ? 'Ingreso' : 'Gasto');
+    const tx = {
+      id: Date.now()+Math.floor(Math.random()*999),
+      type: isInc ? 'income' : 'expense',
+      amount: parseFloat(amt),
+      category: cat,
+      desc, date: new Date().toISOString().split('T')[0], ts: new Date().toISOString()
+    };
+    transactions.push(tx);
+    saveState(); renderAll(); toast('Transacción rápida agregada', 'success');
+  });
 }
 
-function quickAdd(){
-  const amount = prompt('Monto (Bs.):');
-  if (!amount || isNaN(amount)) return;
-  const desc = prompt('Descripción (opcional):') || 'Transacción rápida';
-  const isIncome = confirm('¿Es un ingreso? (Aceptar = Ingreso)');
-  const tx = {
-    id: Date.now(),
-    type: isIncome ? 'income' : 'expense',
-    amount: parseFloat(amount),
-    category: 'Otros',
-    description: desc,
-    date: new Date().toISOString().split('T')[0],
-    timestamp: new Date().toISOString()
-  };
-  transactions.push(tx);
-  saveStorage();
-  updateUI();
-  notify('Transacción rápida agregada', 'success');
-}
-
-// ---------------- eliminar ----------------
-function deleteTransaction(id){
-  if (!confirm('¿Eliminar esta transacción?')) return;
-  const idx = transactions.findIndex(t => t.id === id);
-  if (idx === -1) return;
-  transactions.splice(idx, 1);
-  saveStorage();
-  updateUI();
-  notify('Transacción eliminada', 'info');
-}
-
-// ---------------- UI updates ----------------
-function updateUI(){
-  updateBalance();
+/* ---------- Renderers ---------- */
+function renderAll(){
+  renderBalance();
   renderRecent();
   renderHistory();
-  renderGoals();
+  renderGoalsList();
   renderCategorySummary();
-  renderReminders();
-  // if currently in reports and a chart is visible, keep it (user triggers charts manually)
+  // reports remain until user generates
+  updateFloatingBalance();
 }
 
-function updateBalance(){
+function renderBalance(){
   const inc = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const total = inc - exp;
-  const elTotal = document.getElementById('total-balance');
-  if (elTotal) { elTotal.textContent = `Bs. ${total.toFixed(2)}`; elTotal.className = total>=0 ? 'big-amount positive' : 'big-amount negative'; }
-  const elInc = document.getElementById('total-income'); if (elInc) elInc.textContent = `Bs. ${inc.toFixed(2)}`;
-  const elExp = document.getElementById('total-expense'); if (elExp) elExp.textContent = `Bs. ${exp.toFixed(2)}`;
-  const fl = document.getElementById('floating-balance-amount'); if (fl) { fl.textContent = `Bs. ${total.toFixed(2)}`; fl.className = total>=0 ? 'balance-small positive' : 'balance-small negative'; }
+  document.getElementById('balance-amount').textContent = `Bs. ${total.toFixed(2)}`;
+  document.getElementById('home-income').textContent = `Ingreso: Bs. ${inc.toFixed(2)}`;
+  document.getElementById('home-expense').textContent = `Gasto: Bs. ${exp.toFixed(2)}`;
+  document.getElementById('floating-balance').textContent = `Bs. ${total.toFixed(2)}`;
 }
 
 function renderRecent(){
-  const target = document.getElementById('widget-transactions');
-  if (!target) return;
-  const recent = [...transactions].sort((a,b)=> new Date(b.date) - new Date(a.date)).slice(0,4);
-  if (recent.length === 0) target.innerHTML = '<p>No hay transacciones recientes</p>';
-  else {
-    target.innerHTML = recent.map(t => {
-      const s = t.type === 'income' ? '+' : '-';
-      return `<div class="transaction-item"><div class="transaction-details"><div style="font-weight:600">${escapeHtml(t.description)}</div><div class="transaction-category">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div><div class="transaction-amount ${t.type}">${s}Bs. ${t.amount.toFixed(2)}</div></div>`;
-    }).join('');
-  }
+  const zone = document.getElementById('recent-list');
+  zone.innerHTML = '';
+  const list = [...transactions].sort((a,b)=> new Date(b.ts) - new Date(a.ts)).slice(0,4);
+  if (list.length === 0) { zone.innerHTML = '<p class="muted">No hay transacciones aún</p>'; return; }
+  list.forEach(t => {
+    const div = document.createElement('div'); div.className = 'tx-item';
+    div.innerHTML = `<div class="tx-left"><div style="font-weight:700">${escapeHtml(t.desc)}</div><div class="tx-cat">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div><div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} Bs. ${t.amount.toFixed(2)}</div>`;
+    zone.appendChild(div);
+  });
 }
 
 function renderHistory(){
-  const container = document.getElementById('transaction-history');
-  if (!container) return;
-  container.innerHTML = '';
-  if (transactions.length === 0) { container.innerHTML = '<p>No hay transacciones registradas</p>'; return; }
-  const sorted = [...transactions].sort((a,b)=> new Date(b.date) - new Date(a.date));
-  sorted.forEach(t => {
-    const row = document.createElement('div'); row.className = 'transaction-item';
-    const details = document.createElement('div'); details.className = 'transaction-details';
-    const d1 = document.createElement('div'); d1.textContent = t.description; d1.style.fontWeight='600';
-    const d2 = document.createElement('div'); d2.className='transaction-category'; d2.textContent = `${t.category} • ${formatDate(t.date)}`;
-    details.appendChild(d1); details.appendChild(d2);
-    const amount = document.createElement('div'); amount.className = `transaction-amount ${t.type}`; amount.textContent = (t.type==='income'?'+':'-')+'Bs. '+t.amount.toFixed(2);
-    const actions = document.createElement('div'); actions.className='transaction-actions';
-    const btn = document.createElement('button'); btn.className='delete-btn'; btn.innerHTML='🗑️'; btn.title='Eliminar';
-    btn.addEventListener('click', ()=> deleteTransaction(t.id));
-    actions.appendChild(btn);
-    row.appendChild(details); row.appendChild(amount); row.appendChild(actions);
-    container.appendChild(row);
+  const zone = document.getElementById('tx-history');
+  zone.innerHTML = '';
+  if (transactions.length === 0) { zone.innerHTML = '<p class="muted">No hay transacciones registradas</p>'; return; }
+  const list = [...transactions].sort((a,b)=> new Date(b.date) - new Date(a.date));
+  list.forEach(t => {
+    const div = document.createElement('div'); div.className = 'tx-item';
+    const left = document.createElement('div'); left.className = 'tx-left';
+    const dtitle = document.createElement('div'); dtitle.style.fontWeight = '700'; dtitle.textContent = t.desc;
+    const dcat = document.createElement('div'); dcat.className = 'tx-cat'; dcat.textContent = `${t.category} • ${formatDate(t.date)}`;
+    left.appendChild(dtitle); left.appendChild(dcat);
+    const amount = document.createElement('div'); amount.className = `tx-amount ${t.type}`; amount.textContent = (t.type==='income'?'+':'-') + ' Bs. ' + t.amount.toFixed(2);
+    const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center';
+    // delete button (no confirm, immediate)
+    const del = document.createElement('button'); del.className='btn-ghost'; del.textContent='Eliminar'; del.style.marginLeft='8px';
+    del.addEventListener('click', () => {
+      // eliminar inmediatamente
+      transactions = transactions.filter(x => x.id !== t.id);
+      saveState();
+      renderAll();
+    });
+    right.appendChild(amount); right.appendChild(del);
+
+    div.appendChild(left); div.appendChild(right);
+    zone.appendChild(div);
   });
 }
 
-function renderGoals(){
-  const el = document.getElementById('goals-list');
-  const widget = document.getElementById('widget-goals');
-  if (el){
-    el.innerHTML = '';
-    if (goals.length === 0) el.innerHTML = '<p>No hay metas</p>';
-    else {
-      goals.forEach(g => {
-        const item = document.createElement('div'); item.className='goal-item'; item.style.padding='10px';
-        item.innerHTML = `<div style="flex:1"><strong>${escapeHtml(g.name)}</strong><div style="font-size:13px;color:var(--muted)">${formatDate(g.deadline)} • ${escapeHtml(g.description||'')}</div></div><div style="min-width:120px;text-align:right"><div style="font-weight:700">Bs. ${g.current.toFixed(2)} / ${g.target.toFixed(2)}</div></div>`;
-        el.appendChild(item);
-      });
-    }
-  }
-  if (widget){
-    const active = goals.filter(g=>!g.completed).slice(0,3);
-    if (active.length === 0) widget.innerHTML = '<p>No hay metas activas</p>';
-    else {
-      widget.innerHTML = active.map(g => {
-        const pct = g.target>0? (g.current/g.target)*100 : 0;
-        return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${escapeHtml(g.name)}</span><span>${pct.toFixed(0)}%</span></div><div style="height:8px;background:#eef2f6;border-radius:6px;overflow:hidden"><div style="width:${Math.min(pct,100)}%;height:100%;background:var(--verde-osc)"></div></div></div>`;
-      }).join('');
-    }
-  }
+function renderGoalsList(){
+  const zone = document.getElementById('goals-list');
+  zone.innerHTML = '';
+  if (goals.length === 0) { zone.innerHTML = '<p class="muted">No tienes metas</p>'; return; }
+  goals.forEach(g => {
+    const el = document.createElement('div'); el.className = 'goal-item';
+    const head = document.createElement('div'); head.className = 'goal-head';
+    const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent = g.name;
+    const progressText = document.createElement('div'); progressText.style.fontWeight='700'; progressText.textContent = `${Math.round((g.current / g.target || 0) * 100)}%`;
+    head.appendChild(title); head.appendChild(progressText);
+    const prog = document.createElement('div'); prog.className='progress';
+    const fill = document.createElement('div'); fill.className='progress-fill'; fill.style.width = `${Math.min(100, (g.current / g.target)*100)}%`;
+    prog.appendChild(fill);
+
+    // controls: add amount to goal (quick)
+    const controls = document.createElement('div'); controls.style.marginTop='8px'; controls.style.display='flex'; controls.style.gap='6px';
+    const addInput = document.createElement('input'); addInput.type='number'; addInput.placeholder='Agregar Bs.'; addInput.style.flex='1'; addInput.style.padding='8px'; addInput.style.borderRadius='8px'; addInput.style.border='1px solid #eef3f6';
+    const addBtn = document.createElement('button'); addBtn.className='btn-outline'; addBtn.textContent='Agregar';
+    addBtn.addEventListener('click', () => {
+      const val = parseFloat(addInput.value) || 0;
+      if (val > 0) {
+        g.current = +(g.current + val).toFixed(2);
+        if (g.current > g.target) g.current = g.target;
+        saveState(); renderAll(); addInput.value = '';
+        toast('Aporte a meta actualizado','success');
+      }
+    });
+    const delBtn = document.createElement('button'); delBtn.className='btn-ghost'; delBtn.textContent='Eliminar';
+    delBtn.addEventListener('click', () => {
+      goals = goals.filter(x => x.id !== g.id);
+      saveState(); renderAll();
+    });
+    controls.appendChild(addInput); controls.appendChild(addBtn); controls.appendChild(delBtn);
+
+    el.appendChild(head); el.appendChild(prog); el.appendChild(controls);
+    zone.appendChild(el);
+  });
 }
 
 function renderCategorySummary(){
-  const container = document.getElementById('category-summary');
-  if (!container) return;
-  if (transactions.length === 0) { container.innerHTML = '<p>No hay datos para el resumen</p>'; return; }
-  const map = {};
-  transactions.forEach(t => {
-    if (!map[t.category]) map[t.category] = { income:0, expense:0 };
-    if (t.type === 'income') map[t.category].income += t.amount;
-    else if (t.type === 'expense') map[t.category].expense += t.amount;
-  });
-  const html = Object.keys(map).map(cat => {
-    const d = map[cat]; const total = d.income - d.expense;
-    return `<div class="category-row"><div>${escapeHtml(cat)}</div><div style="font-weight:700">${total>=0?'+Bs. ':'-Bs. '}${Math.abs(total).toFixed(2)}</div></div>`;
-  }).join('');
-  container.innerHTML = html;
+  // optional: fills home category summary — minimal approach already shows in reports
 }
 
-function renderReminders(){
-  const el = document.getElementById('active-reminders');
-  if (!el) return;
-  el.innerHTML = '';
-  const list = reminders.slice(-6).reverse();
-  if (list.length === 0) el.innerHTML = '<p>No hay recordatorios activos</p>';
-  else {
-    list.forEach(r => {
-      const d = document.createElement('div'); d.className='reminder-item'; d.style.padding='8px'; d.style.marginBottom='8px';
-      d.innerHTML = `<strong>${escapeHtml(r.title)}</strong><div style="font-size:13px;color:var(--muted)">${escapeHtml(r.message)}</div><small style="color:var(--muted)">${formatDate(r.createdAt)}</small>`;
-      el.appendChild(d);
-    });
-  }
-}
-
-// ---------------- reportes (Chart.js donuts) ----------------
+/* ---------- Reports (donuts with Chart.js) ---------- */
 function setupReports(){
-  const btnDay = document.getElementById('generate-report-day');
-  const btnWeek = document.getElementById('generate-report-week');
-  if (btnDay) btnDay.addEventListener('click', e=>{ e.preventDefault(); generateReport('day'); });
-  if (btnWeek) btnWeek.addEventListener('click', e=>{ e.preventDefault(); generateReport('week'); });
+  document.getElementById('report-day').addEventListener('click', () => generateReport('day'));
+  document.getElementById('report-week').addEventListener('click', () => generateReport('week'));
 }
 
 function generateReport(mode){
   const chosen = document.getElementById('report-date').value || new Date().toISOString().split('T')[0];
-  const container = document.getElementById('report-charts');
-  const reportContent = document.getElementById('report-content');
-  if (!container || !reportContent) return;
-
-  // seleccionar transacciones del periodo
-  let list = [];
-  let title = '';
-  if (mode === 'day'){
+  let list = [], title = '';
+  if (mode === 'day') {
     title = `Reporte del día: ${formatDate(chosen)}`;
     list = transactions.filter(t => t.date === chosen);
   } else {
@@ -372,17 +313,19 @@ function generateReport(mode){
     const diffToMonday = (day === 0) ? -6 : (1 - day);
     const monday = new Date(ref); monday.setDate(ref.getDate() + diffToMonday); monday.setHours(0,0,0,0);
     const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
-    title = `Reporte semanal: ${formatDate(monday.toISOString().split('T')[0])} — ${formatDate(sunday.toISOString().split('T')[0])}`;
+    title = `Semana: ${formatDate(monday.toISOString().split('T')[0])} — ${formatDate(sunday.toISOString().split('T')[0])}`;
     list = transactions.filter(t => {
       const d = new Date(t.date + 'T00:00:00');
       return d >= monday && d <= sunday;
     });
   }
 
+  const reportArea = document.getElementById('report-charts');
+  const summary = document.getElementById('report-summary');
+  reportArea.innerHTML = '';
+
   if (!list || list.length === 0) {
-    reportContent.querySelector('#report-charts').innerHTML = '';
-    reportContent.querySelector('p')?.remove();
-    container.innerHTML = `<p>No hay transacciones para este periodo (${title}).</p>`;
+    summary.textContent = `${title} — No hay transacciones para este periodo`;
     return;
   }
 
@@ -390,125 +333,87 @@ function generateReport(mode){
   const totalInc = list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const totalExp = list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
 
-  // breakdown por categoría (suma por categoria)
+  summary.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${title}</div>
+                       <div class="muted">Ingresos: Bs. ${totalInc.toFixed(2)} · Gastos: Bs. ${totalExp.toFixed(2)} · Balance: Bs. ${(totalInc-totalExp).toFixed(2)}</div>`;
+
+  // Overview donut
+  const od = document.createElement('div'); od.className='donut-card';
+  od.innerHTML = `<canvas id="chart-overview" width="160" height="160"></canvas><div style="font-weight:700;margin-top:6px">Ingresos vs Gastos</div>`;
+  reportArea.appendChild(od);
+
+  // Categories donut (top 5)
   const catMap = {};
-  list.forEach(t => {
-    if (!catMap[t.category]) catMap[t.category] = 0;
-    catMap[t.category] += t.amount;
-  });
+  list.forEach(t => { catMap[t.category] = (catMap[t.category]||0) + t.amount; });
+  const entries = Object.keys(catMap).map(k=>({k,v:catMap[k]})).sort((a,b)=>b.v-a.v).slice(0,5);
 
-  // limpiar contenedor y crear canvases para Chart.js
-  container.innerHTML = '';
-  const overviewCard = document.createElement('div'); overviewCard.className = 'donut-card';
-  overviewCard.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${escapeHtml(title)}</div><canvas id="chart-overview" width="160" height="160"></canvas><div style="margin-top:6px">Ingresos: Bs. ${totalInc.toFixed(2)} • Gastos: Bs. ${totalExp.toFixed(2)}</div>`;
-  container.appendChild(overviewCard);
-
-  // categories donut (top 5)
-  const catEntries = Object.keys(catMap).map(k=>({k,v:catMap[k]})).sort((a,b)=>b.v-a.v).slice(0,5);
-  if (catEntries.length) {
-    const catCard = document.createElement('div'); catCard.className='donut-card';
-    catCard.innerHTML = `<div style="font-weight:700;margin-bottom:6px">Top categorías</div><canvas id="chart-categories" width="160" height="160"></canvas>`;
-    container.appendChild(catCard);
+  if (entries.length) {
+    const cd = document.createElement('div'); cd.className='donut-card';
+    cd.innerHTML = `<canvas id="chart-cats" width="160" height="160"></canvas><div style="font-weight:700;margin-top:6px">Top categorías</div>`;
+    reportArea.appendChild(cd);
   }
 
-  // crear datasets
-  // overview: income vs expense (use absolute for plotting)
-  const overviewLabels = ['Ingresos','Gastos'];
-  const overviewData = [totalInc, totalExp];
-  const overviewColors = ['#27ae60','#e74c3c'];
-
-  // categories
-  const catLabels = catEntries.map(c=>c.k);
-  const catData = catEntries.map(c=>c.v);
-  const palette = ['#27ae60','#3498db','#f1c40f','#9b59b6','#e67e22'];
-
-  // destruir charts previos si existían
+  // destroy existing charts
   if (chartOverview) { chartOverview.destroy(); chartOverview = null; }
   if (chartCategories) { chartCategories.destroy(); chartCategories = null; }
 
-  // crear chart overview
+  // create overview chart
   const ctxO = document.getElementById('chart-overview').getContext('2d');
   chartOverview = new Chart(ctxO, {
     type: 'doughnut',
     data: {
-      labels: overviewLabels,
-      datasets: [{ data: overviewData, backgroundColor: overviewColors }]
+      labels: ['Ingresos','Gastos'],
+      datasets: [{
+        data: [totalInc, totalExp],
+        backgroundColor: ['#27ae60','#e24b4b']
+      }]
     },
     options: {
+      cutout: '70%',
       responsive: false,
-      maintainAspectRatio: false,
-      cutout: '65%',
-      plugins: { legend: { position: 'bottom' } }
+      plugins: { legend: { position:'bottom' } }
     }
   });
 
-  // crear chart categories (si aplica)
-  if (catEntries.length) {
-    const ctxC = document.getElementById('chart-categories').getContext('2d');
+  if (entries.length) {
+    const ctxC = document.getElementById('chart-cats').getContext('2d');
     chartCategories = new Chart(ctxC, {
       type: 'doughnut',
       data: {
-        labels: catLabels,
-        datasets: [{ data: catData, backgroundColor: palette.slice(0,catData.length) }]
+        labels: entries.map(e=>e.k),
+        datasets: [{ data: entries.map(e=>e.v), backgroundColor: ['#27ae60','#3498db','#f1c40f','#9b59b6','#e67e22'] }]
       },
-      options: {
-        responsive: false,
-        maintainAspectRatio: false,
-        cutout: '60%',
-        plugins: { legend: { position: 'bottom' } }
-      }
+      options: { cutout: '65%', responsive:false, plugins:{ legend:{ position:'bottom' } } }
     });
   }
 
-  // additionally show list of transactions under charts
-  const detailsHtml = list.sort((a,b)=> new Date(b.date) - new Date(a.date)).map(t => `
-    <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f2f6fa">
-      <div style="flex:1">
-        <div style="font-weight:600">${escapeHtml(t.description)}</div>
-        <div style="font-size:12px;color:var(--muted)">${escapeHtml(t.category)} • ${formatDate(t.date)}</div>
-      </div>
-      <div style="min-width:110px;text-align:right;font-weight:700">${t.type==='income'?'+':'-'}Bs. ${t.amount.toFixed(2)}</div>
+  // show list below charts
+  const listDiv = document.createElement('div'); listDiv.style.marginTop='12px';
+  listDiv.innerHTML = list.sort((a,b)=> new Date(b.ts) - new Date(a.ts)).map(t => `
+    <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f2f6f9">
+      <div style="flex:1"><div style="font-weight:700">${escapeHtml(t.desc)}</div><div class="muted">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div>
+      <div style="min-width:110px;text-align:right;font-weight:700">${t.type==='income'?'+':'-'} Bs. ${t.amount.toFixed(2)}</div>
     </div>`).join('');
-  // append the list
-  const detailsWrapper = document.createElement('div');
-  detailsWrapper.style.marginTop = '12px';
-  detailsWrapper.innerHTML = detailsHtml;
-  container.appendChild(detailsWrapper);
+  reportArea.appendChild(listDiv);
 }
 
-// ---------------- reminders ----------------
-function createReminder(title, message){
-  reminders.push({ id: Date.now(), title, message, createdAt: new Date().toISOString(), read:false });
-  saveStorage();
-  renderReminders();
+/* ---------- Utilities ---------- */
+function formatDate(ymd){
+  if (!ymd) return '';
+  const d = new Date(ymd);
+  return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-function toggleReminders(){
-  const chk = document.getElementById('reminder-daily');
-  if (chk && chk.checked) createReminder('Recordatorio diario','No olvides registrar tus gastos');
-  else notify('Recordatorios desactivados','info');
-}
-
-// ---------------- util ----------------
-function formatDate(dateStr){
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('es-ES', { year:'numeric', month:'short', day:'numeric' });
-}
-
-function notify(msg, type='info'){
+function toast(msg, type='info'){
   const n = document.createElement('div');
   n.textContent = msg;
-  n.style.position='fixed'; n.style.right='18px'; n.style.top='18px';
-  n.style.padding='10px 14px'; n.style.borderRadius='8px'; n.style.zIndex=2000; n.style.color='#fff'; n.style.fontWeight='700';
-  n.style.boxShadow='0 8px 30px rgba(15,23,42,0.12)';
-  n.style.opacity='1';
-  if (type==='success') n.style.background='var(--verde-osc)';
-  else if (type==='error') n.style.background='#e74c3c';
-  else if (type==='warning') n.style.background='#f39c12';
-  else n.style.background='#3498db';
+  n.style.position='fixed'; n.style.right='16px'; n.style.bottom='80px';
+  n.style.background = type==='success'? '#27ae60' : type==='error'? '#e24b4b' : '#3498db';
+  n.style.color = '#fff'; n.style.padding = '10px 14px'; n.style.borderRadius='8px'; n.style.boxShadow='0 10px 30px rgba(15,23,42,0.08)';
   document.body.appendChild(n);
-  setTimeout(()=>{ n.style.transition='opacity .3s'; n.style.opacity='0'; setTimeout(()=> n.remove(),300); },2200);
+  setTimeout(()=> { n.style.transition='opacity .3s'; n.style.opacity='0'; setTimeout(()=> n.remove(),300); }, 2200);
 }
 
-function escapeHtml(str){ if (!str) return ''; return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(str){
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
