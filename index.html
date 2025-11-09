@@ -1,114 +1,164 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finnanzi</title>
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>FINNANZI — Control de Gastos</title>
+
+  <!-- Fuente -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+   <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Chart.js (reportes) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-
-<!-- Portada -->
-<section id="section-home" class="section active">
-    <div class="home-container">
-        <h1>Finnanzi</h1>
-        <div class="home-icon">💰🪙</div>
-        <p>Controla tus gastos y metas de ahorro fácilmente</p>
-        <div class="home-buttons">
-            <button class="btn" data-section="section-transactions">Transacciones</button>
-            <button class="btn" data-section="section-goals">Metas</button>
-            <button class="btn" data-section="section-reports">Reportes</button>
-        </div>
+  <!-- Splash (2s) -->
+  <div id="splash" class="splash">
+    <div class="splash-card">
+      <div class="splash-coins">💸🪙</div>
+      <div class="splash-title">FINNANZI</div>
     </div>
-</section>
+  </div>
 
-<!-- Sección de Transacciones -->
-<section id="section-transactions" class="section">
-    <h2>Transacciones</h2>
-    <form id="transaction-form">
-        <div class="form-group">
-            <label for="transaction-type">Tipo</label>
-            <select id="transaction-type">
+  <!-- App -->
+  <div id="app" class="root-hidden">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-circle">💸</div>
+        <div class="titles">
+          <div class="app-title">FINNANZI</div>
+          <div class="app-sub">Control de gastos</div>
+        </div>
+      </div>
+
+      <div class="right-controls">
+        <button id="theme-toggle" class="icon-btn" aria-label="Cambiar tema">🌓</button>
+      </div>
+    </header>
+
+    <!-- tabs -->
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-section="home">Inicio</button>
+      <button class="tab" data-section="transactions">Transacciones</button>
+      <button class="tab" data-section="goals">Metas</button>
+      <button class="tab" data-section="reports">Reportes</button>
+    </nav>
+
+    <main class="screens">
+      <!-- HOME -->
+      <section id="home" class="screen active">
+        <div class="card balance-card">
+          <div class="balance-head">Balance</div>
+          <div id="balance-value" class="balance-value">Bs. 0.00</div>
+          <div class="balance-row">
+            <div class="mini">
+              <div class="mini-title">Ingresos</div>
+              <div id="home-income" class="mini-value positive">Bs. 0.00</div>
+            </div>
+            <div class="mini">
+              <div class="mini-title">Gastos</div>
+              <div id="home-expense" class="mini-value negative">Bs. 0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Últimas transacciones</div>
+          <div id="recent-home" class="tx-list">
+            <p class="muted">No hay transacciones aún</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRANSACTIONS -->
+      <section id="transactions" class="screen">
+        <div class="card">
+          <div class="card-title">Registrar transacción</div>
+          <form id="tx-form" class="form" autocomplete="off" novalidate>
+            <div class="row">
+              <select id="tx-type" required>
+                <option value="">Tipo</option>
                 <option value="income">Ingreso</option>
                 <option value="expense">Gasto</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="transaction-amount">Monto (Bs.)</label>
-            <input type="number" id="transaction-amount" placeholder="Ej: 500">
-        </div>
-        <div class="form-group">
-            <label for="transaction-category">Categoría</label>
-            <select id="transaction-category"></select>
-        </div>
-        <div class="form-group">
-            <label for="transaction-description">Descripción</label>
-            <input type="text" id="transaction-description" placeholder="Ej: Compra supermercado">
-        </div>
-        <div class="form-group">
-            <label for="transaction-date">Fecha</label>
-            <input type="date" id="transaction-date">
-        </div>
-        <button type="submit" class="btn-success">Agregar Transacción</button>
-    </form>
+              </select>
 
-    <h3>Historial de Transacciones</h3>
-    <div id="transaction-history"></div>
-</section>
+              <input id="tx-amount" type="number" step="0.01" min="0" placeholder="Monto (Bs.)" required />
+            </div>
 
-<!-- Sección de Metas -->
-<section id="section-goals" class="section">
-    <h2>Metas de Ahorro</h2>
-    <form id="goal-form">
-        <div class="form-group">
-            <label for="goal-name">Nombre de la Meta</label>
-            <input type="text" id="goal-name" placeholder="Ej: Vacaciones">
+            <div class="row">
+              <select id="tx-category" required>
+                <option value="">Categoría</option>
+              </select>
+              <input id="tx-date" type="date" required />
+            </div>
+
+            <div class="row">
+              <input id="tx-desc" type="text" placeholder="Descripción (opcional)" />
+            </div>
+
+            <div class="row actions">
+              <button type="submit" class="btn-primary">Agregar</button>
+            </div>
+          </form>
         </div>
-        <div class="form-group">
-            <label for="goal-target">Monto Objetivo (Bs.)</label>
-            <input type="number" id="goal-target" placeholder="Ej: 5000">
+
+        <div class="card">
+          <div class="card-title">Historial</div>
+          <div id="tx-history" class="tx-list">
+            <p class="muted">No hay transacciones registradas</p>
+          </div>
         </div>
-        <div class="form-group">
-            <label for="goal-deadline">Fecha Límite</label>
-            <input type="date" id="goal-deadline">
+      </section>
+
+      <!-- GOALS -->
+      <section id="goals" class="screen">
+        <div class="card">
+          <div class="card-title">Crear Meta</div>
+          <form id="goal-form" class="form" autocomplete="off" novalidate>
+            <input id="goal-name" type="text" placeholder="Nombre de la meta" required />
+            <input id="goal-target" type="number" step="0.01" min="0" placeholder="Monto objetivo (Bs.)" required />
+            <div class="row actions">
+              <button type="submit" class="btn-primary">Crear Meta</button>
+            </div>
+          </form>
         </div>
-        <div class="form-group">
-            <label for="goal-description">Descripción</label>
-            <textarea id="goal-description" placeholder="Detalles de la meta"></textarea>
+
+        <div class="card">
+          <div class="card-title">Mis Metas</div>
+          <div id="goals-list" class="goals-home">
+            <p class="muted">No tienes metas</p>
+          </div>
         </div>
-        <button type="submit" class="btn-success">Agregar Meta</button>
-    </form>
+      </section>
 
-    <h3>Metas Activas</h3>
-    <div id="goal-list"></div>
-</section>
+      <!-- REPORTS -->
+      <section id="reports" class="screen">
+        <div class="card">
+          <div class="card-title">Reportes</div>
 
-<!-- Sección de Reportes -->
-<section id="section-reports" class="section">
-    <h2>Reportes</h2>
-    <div class="report-summary">
-        <p>Total Ingresos: <span id="total-income">Bs. 0.00</span></p>
-        <p>Total Gastos: <span id="total-expense">Bs. 0.00</span></p>
-        <p>Balance Total: <span id="total-balance">Bs. 0.00</span></p>
-    </div>
-    <button id="generate-report" class="btn">Actualizar Reporte</button>
-</section>
+          <div class="row">
+            <input id="report-date" type="date" />
+            <div class="report-buttons">
+              <button id="report-day" class="btn-outline">Día</button>
+              <button id="report-week" class="btn-outline">Semana</button>
+            </div>
+          </div>
 
-<script  src="js/app.js"></script>
-<script>
-    // Navegación entre secciones
-    document.querySelectorAll('.btn[data-section]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const target = btn.getAttribute('data-section');
-            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.getElementById(target).classList.add('active');
-        });
-    });
+          <div id="report-summary" class="report-summary muted">Selecciona día o semana. Los gráficos se actualizan automáticamente.</div>
 
-    // Configurar fecha actual
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('transaction-date').value = today;
-    document.getElementById('goal-deadline').valueAsDate = new Date(Date.now() + 30*24*60*60*1000);
-</script>
+          <div id="report-charts" class="report-charts"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <div id="floating" class="floating">Bs. 0.00</div>
+    </footer>
+  </div>
+
+   <script src="js/app.js"></script>
 </body>
 </html>
