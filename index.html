@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>FINNANZI — v2</title>
+  <title>FINNANZI — v2 (Final)</title>
 
   <!-- Fuente -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -18,43 +18,39 @@
   <!-- SPLASH -->
   <div id="splash" class="splash">
     <div class="splash-card">
-      <div class="logo">💰</div>
-      <div class="title">FINNANZI</div>
-      <div class="subtitle">Control de gastos</div>
+      <div class="splash-coins">💰💰💰</div>
+      <div class="splash-title">FINNANZI</div>
     </div>
   </div>
 
   <!-- APP -->
-  <div id="app" class="app root-hidden">
+  <div id="app" class="app root-hidden" role="application" aria-label="FINNANZI aplicación">
     <header class="topbar">
-      <div class="left">
-        <div class="brand">
-          <span class="logo-icon">💰</span>
-          <div class="titles">
-            <div class="app-title">FINNANZI</div>
-            <div class="app-sub">Control de gastos</div>
-          </div>
+      <div class="brand">
+        <span class="logo-icon">💰</span>
+        <div class="titles">
+          <div class="app-title">FINNANZI</div>
+          <div class="app-sub">Control de gastos</div>
         </div>
       </div>
 
-      <div class="right">
-        <button id="theme-toggle" class="icon-btn" title="Tema">🌓</button>
+      <div class="controls">
+        <button id="theme-toggle" class="icon-btn" aria-label="Cambiar tema">🌓</button>
       </div>
     </header>
 
     <!-- TABS -->
-    <nav class="tabs">
-      <button class="tab active" data-section="home">Inicio</button>
-      <button class="tab" data-section="transactions">Transacciones</button>
-      <button class="tab" data-section="reports">Reportes</button>
+    <nav class="tabs" role="tablist" aria-label="Navegación principal">
+      <button class="tab active" data-section="home" role="tab">Inicio</button>
+      <button class="tab" data-section="transactions" role="tab">Transacciones</button>
+      <button class="tab" data-section="reports" role="tab">Reportes</button>
     </nav>
 
     <!-- SCREENS -->
     <main class="screens">
-
       <!-- HOME -->
-      <section id="home" class="screen active">
-        <div class="card balance-card">
+      <section id="home" class="screen active" aria-labelledby="home">
+        <div class="card balance-card" role="region" aria-label="Balance">
           <div class="balance-head">Balance</div>
           <div id="balance-value" class="balance-value">Bs. 0.00</div>
           <div class="balance-row">
@@ -69,14 +65,14 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" role="region" aria-label="Metas">
           <div class="card-title">Metas de Ahorro</div>
           <div id="goals-home" class="goals-home">
-            <p class="muted">No tienes metas. Crea una en Transacciones → Crear Meta</p>
+            <p class="muted">No tienes metas — crea una en Transacciones</p>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" role="region" aria-label="Últimas transacciones">
           <div class="card-title">Últimas transacciones</div>
           <div id="recent-home" class="tx-list">
             <p class="muted">No hay transacciones aún</p>
@@ -85,50 +81,49 @@
       </section>
 
       <!-- TRANSACTIONS -->
-      <section id="transactions" class="screen">
-        <div class="card">
+      <section id="transactions" class="screen" aria-labelledby="transactions">
+        <div class="card" aria-label="Registrar transacción">
           <div class="card-title">Registrar transacción</div>
-          <form id="tx-form" class="form" autocomplete="off">
+          <form id="tx-form" class="form" autocomplete="off" novalidate>
             <div class="row">
-              <select id="tx-type" required>
+              <select id="tx-type" required aria-label="Tipo de transacción">
                 <option value="">Tipo</option>
                 <option value="income">Ingreso</option>
                 <option value="expense">Gasto</option>
               </select>
-              <input id="tx-amount" type="number" step="0.01" min="0" placeholder="Monto (Bs.)" required />
+              <input id="tx-amount" type="number" step="0.01" min="0" placeholder="Monto (Bs.)" required aria-label="Monto" />
             </div>
 
             <div class="row">
-              <select id="tx-category" required>
-                <option value="">Categoría</option>
-              </select>
-              <input id="tx-date" type="date" required />
+              <select id="tx-category" required aria-label="Categoría"></select>
+              <input id="tx-date" type="date" required aria-label="Fecha" />
             </div>
 
             <div class="row">
-              <input id="tx-desc" type="text" placeholder="Descripción (opcional)" />
+              <!-- textarea-like single-line input but visible on mobile -->
+              <input id="tx-desc" type="text" placeholder="Descripción (opcional)" aria-label="Descripción" />
             </div>
 
             <div class="row actions">
               <button type="submit" class="btn btn-primary">Agregar</button>
               <button type="button" id="tx-clear" class="btn btn-ghost">Limpiar</button>
-              <button type="button" id="goto-goals" class="btn btn-ghost">Crear Meta</button>
             </div>
           </form>
         </div>
 
-        <div class="card">
+        <div class="card" aria-label="Historial de transacciones">
           <div class="card-title">Historial</div>
           <div id="tx-history" class="tx-list">
             <p class="muted">No hay transacciones registradas</p>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" aria-label="Crear meta">
           <div class="card-title">Crear Meta</div>
-          <form id="goal-form" class="form">
-            <input id="goal-name" type="text" placeholder="Nombre de la meta" required />
-            <input id="goal-target" type="number" step="0.01" min="0" placeholder="Monto objetivo (Bs.)" required />
+          <!-- inputs visibles correctamente en móvil -->
+          <form id="goal-form" class="form" autocomplete="off" novalidate>
+            <input id="goal-name" type="text" placeholder="Nombre de la meta" required aria-label="Nombre de la meta" />
+            <input id="goal-target" type="number" step="0.01" min="0" placeholder="Monto objetivo (Bs.)" required aria-label="Monto objetivo" />
             <div class="row actions">
               <button type="submit" class="btn btn-primary">Crear Meta</button>
               <button type="button" id="goal-clear" class="btn btn-ghost">Limpiar</button>
@@ -138,12 +133,12 @@
       </section>
 
       <!-- REPORTS -->
-      <section id="reports" class="screen">
-        <div class="card">
+      <section id="reports" class="screen" aria-labelledby="reports">
+        <div class="card" aria-label="Reportes">
           <div class="card-title">Reportes (automáticos)</div>
 
           <div class="row">
-            <input id="report-date" type="date" />
+            <input id="report-date" type="date" aria-label="Fecha del reporte" />
             <div class="report-buttons">
               <button id="report-day" class="btn btn-outline">Día</button>
               <button id="report-week" class="btn btn-outline">Semana</button>
@@ -152,7 +147,7 @@
 
           <div id="report-summary" class="report-summary muted">Selecciona día o semana. Los gráficos se actualizan automáticamente.</div>
 
-          <div id="report-charts" class="report-charts">
+          <div id="report-charts" class="report-charts" aria-live="polite">
             <!-- canvases generados por JS -->
           </div>
         </div>
@@ -160,8 +155,9 @@
     </main>
 
     <footer class="app-footer">
-      <div id="floating" class="floating">Bs. 0.00</div>
-      <button id="fab" class="fab">+</button>
+      <div id="floating" class="floating" aria-hidden="false">Bs. 0.00</div>
+      <!-- NOTE: se elimina botón "+" como pediste -->
+      <div style="width:56px"></div>
     </footer>
   </div>
 

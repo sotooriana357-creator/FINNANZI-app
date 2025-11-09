@@ -1,49 +1,45 @@
-/* FINNANZI v2 - Desde CERO
-   - Responsive total
-   - Splash screen
-   - Dark mode toggle (guardado)
-   - Transacciones: agregar, eliminar inmediato, limpiar form
-   - Metas con % y barra animada + aporte directo
+/* FINNANZI v2 Final - Código desde cero
+   - Splash 2s con monedas + FINNANZI
+   - Sin botón flotante
+   - Formularios y metas visibles en móvil
+   - Transacciones: agregar, eliminar (inmediato)
    - Reportes automáticos (día/semana) con Chart.js
-   - Guardado en localStorage
+   - Tema claro/oscuro guardado en localStorage
+   - Responsive y optimizado para WebView (Kodular)
 */
 
-/* ---------- Keys y estado ---------- */
-const LS_TX = 'finnanzi_v2_tx';
-const LS_GOALS = 'finnanzi_v2_goals';
-const LS_THEME = 'finnanzi_v2_theme';
+/* ---------- Constantes / estado ---------- */
+const LS_TX = 'finnanzi_v2_tx_final';
+const LS_GOALS = 'finnanzi_v2_goals_final';
+const LS_THEME = 'finnanzi_v2_theme_final';
 
-let transactions = []; // {id, type, amount, category, desc, date, ts}
-let goals = [];        // {id, name, target, current}
+let transactions = []; // {id,type,amount,category,desc,date,ts}
+let goals = [];        // {id,name,target,current}
 
-/* Chart refs */
 let chartOverview = null;
 let chartCategories = null;
 
-/* Categorías por defecto */
 const DEFAULT_CATEGORIES = [
   'Alimentación','Transporte','Entretenimiento','Educación','Salud',
   'Vivienda','Salario','Inversiones','Regalos','Otros'
 ];
 
 /* ---------- Helpers ---------- */
-function $(sel){ return document.querySelector(sel) }
-function $all(sel){ return Array.from(document.querySelectorAll(sel)) }
-function formatMoney(n){ return `Bs. ${Number(n).toFixed(2)}` }
-function nowYMD(){ return new Date().toISOString().split('T')[0] }
-function uid(){ return Date.now() + Math.floor(Math.random()*1000) }
-function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const nowYMD = () => new Date().toISOString().split('T')[0];
+const uid = () => Date.now() + Math.floor(Math.random()*999);
+const fmtMoney = (n) => `Bs. ${Number(n).toFixed(2)}`;
+const escapeHtml = (s) => s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
 
 /* ---------- Load / Save ---------- */
 function loadState(){
   try {
-    const t = localStorage.getItem(LS_TX);
-    const g = localStorage.getItem(LS_GOALS);
-    transactions = t ? JSON.parse(t) : [];
-    goals = g ? JSON.parse(g) : [];
-  } catch(e){
+    transactions = JSON.parse(localStorage.getItem(LS_TX)) || [];
+    goals = JSON.parse(localStorage.getItem(LS_GOALS)) || [];
+  } catch(e) {
     transactions = []; goals = [];
-    console.error('Error cargando localStorage', e);
+    console.error('Error parseando localStorage', e);
   }
 }
 function saveState(){
@@ -53,110 +49,79 @@ function saveState(){
 
 /* ---------- Splash + init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
-  // splash
+  // Splash
   const splash = $('#splash');
   setTimeout(() => {
     splash.style.opacity = '0';
-    setTimeout(()=> splash.style.display = 'none', 400);
-    // show app
-    const app = $('#app');
-    app.classList.remove('root-hidden');
-  }, 900); // breve
+    setTimeout(()=> splash.style.display = 'none', 450);
+    $('#app').classList.remove('root-hidden');
+  }, 2000); // 2 segundos
 
-  // load
+  // Inicialización
   loadState();
-  applyTheme();
+  setupTheme();
   setupUI();
   renderAll();
 
-  // default dates
+  // defaults
   $('#tx-date').value = nowYMD();
   if ($('#report-date')) $('#report-date').value = nowYMD();
 
-  // auto-update reports when tx change
-  // (renderAll calls updateReportsAuto)
+  // primera actualización de reportes automáticos (hoy)
+  updateReportsAuto();
 });
 
-/* ---------- Theme ---------- */
-function applyTheme(){
+/* ---------- Tema ---------- */
+function setupTheme(){
   const saved = localStorage.getItem(LS_THEME) || 'light';
   if (saved === 'dark') document.body.classList.add('dark');
   else document.body.classList.remove('dark');
   const btn = $('#theme-toggle');
   if (btn) btn.textContent = saved === 'dark' ? '🌙' : '🌓';
-}
-function toggleTheme(){
-  const dark = document.body.classList.toggle('dark');
-  localStorage.setItem(LS_THEME, dark ? 'dark' : 'light');
-  $('#theme-toggle').textContent = dark ? '🌙' : '🌓';
+  btn.addEventListener('click', () => {
+    const dark = document.body.classList.toggle('dark');
+    localStorage.setItem(LS_THEME, dark ? 'dark' : 'light');
+    btn.textContent = dark ? '🌙' : '🌓';
+  });
 }
 
 /* ---------- UI setup ---------- */
 function setupUI(){
   // tabs
-  $all('.tab').forEach(b => {
+  $$('.tab').forEach(b => {
     b.addEventListener('click', () => {
-      $all('.tab').forEach(x => x.classList.remove('active'));
+      $$('.tab').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       const sec = b.getAttribute('data-section');
       showSection(sec);
     });
   });
 
-  // theme
-  $('#theme-toggle').addEventListener('click', toggleTheme);
-
   // populate categories
-  const catSel = $('#tx-category');
-  catSel.innerHTML = '<option value="">Categoría</option>';
+  const cat = $('#tx-category');
+  cat.innerHTML = '<option value="">Categoría</option>';
   DEFAULT_CATEGORIES.forEach(c => {
-    const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o);
+    const o = document.createElement('option'); o.value = c; o.textContent = c; cat.appendChild(o);
   });
 
-  // tx form
-  $('#tx-form').addEventListener('submit', e => {
-    e.preventDefault();
-    addTransactionFromForm();
-  });
-  $('#tx-clear').addEventListener('click', () => {
-    $('#tx-form').reset();
-    $('#tx-date').value = nowYMD();
-    $('#tx-type').focus();
-  });
-  $('#goto-goals').addEventListener('click', () => {
-    activateTab('transactions');
-    // scroll to goal form
-    setTimeout(()=> $('#goal-name').focus(), 150);
-  });
+  // forms
+  $('#tx-form').addEventListener('submit', (e) => { e.preventDefault(); addTransactionFromForm(); });
+  $('#tx-clear').addEventListener('click', () => { $('#tx-form').reset(); $('#tx-date').value = nowYMD(); $('#tx-type').focus(); });
 
-  // goal form
-  $('#goal-form').addEventListener('submit', e => {
-    e.preventDefault();
-    addGoalFromForm();
-  });
-  $('#goal-clear').addEventListener('click', () => {
-    $('#goal-form').reset();
-    $('#goal-name').focus();
-  });
-
-  // fab quick add
-  $('#fab').addEventListener('click', quickAddPrompt);
+  $('#goal-form').addEventListener('submit', (e) => { e.preventDefault(); addGoalFromForm(); });
+  $('#goal-clear').addEventListener('click', () => { $('#goal-form').reset(); $('#goal-name').focus(); });
 
   // reports
-  $('#report-day').addEventListener('click', () => generateReport('day'));
-  $('#report-week').addEventListener('click', () => generateReport('week'));
+  $('#report-day').addEventListener('click', () => { generateReport('day'); });
+  $('#report-week').addEventListener('click', () => { generateReport('week'); });
 }
 
-/* ---------- Navigation helpers ---------- */
+/* ---------- Navigation helper ---------- */
 function showSection(id){
-  $all('.screen').forEach(s => s.classList.remove('active'));
+  $$('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) el.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
-}
-function activateTab(id){
-  const btn = $all('.tab').find(b => b.getAttribute('data-section') === id);
-  if (btn) btn.click();
 }
 
 /* ---------- Transactions ---------- */
@@ -168,26 +133,25 @@ function addTransactionFromForm(){
   const desc = $('#tx-desc').value.trim() || (type === 'income' ? 'Ingreso' : 'Gasto');
 
   if (!type || amount <= 0) {
-    toast('Completa tipo y monto mayor a 0', 'error'); return;
+    toast('Completa tipo y monto válido', 'error'); return;
   }
 
   const tx = { id: uid(), type, amount: +amount, category, desc, date, ts: new Date().toISOString() };
   transactions.push(tx);
   saveState();
   renderAll();
+  updateReportsAuto();
 
-  // limpiar form
+  // limpiar form pero mantener fecha actual
   $('#tx-form').reset();
   $('#tx-date').value = nowYMD();
   $('#tx-type').focus();
 
-  // auto-update reports
-  updateReportsAuto();
   toast('Transacción agregada', 'success');
 }
 
 function deleteTransaction(id){
-  // eliminar inmediato (sin confirm)
+  // elimina inmediatamente sin confirmación
   transactions = transactions.filter(t => t.id !== id);
   saveState();
   renderAll();
@@ -198,28 +162,13 @@ function deleteTransaction(id){
 function addGoalFromForm(){
   const name = $('#goal-name').value.trim();
   const target = parseFloat($('#goal-target').value) || 0;
-  if (!name || target <= 0) { toast('Nombre y monto objetivo son requeridos', 'error'); return; }
+  if (!name || target <= 0) { toast('Nombre y monto objetivo requeridos', 'error'); return; }
   const g = { id: uid(), name, target: +target, current: 0 };
   goals.push(g);
   saveState();
   renderAll();
   $('#goal-form').reset();
   toast('Meta creada', 'success');
-}
-
-/* ---------- Quick add (FAB) ---------- */
-function quickAddPrompt(){
-  const amt = prompt('Monto (Bs.):');
-  if (!amt || isNaN(amt)) return;
-  const isInc = confirm('¿Es un ingreso? (Aceptar = Ingreso)');
-  const cat = prompt('Categoría (opcional):', 'Otros') || 'Otros';
-  const desc = prompt('Descripción (opcional):', isInc ? 'Ingreso' : 'Gasto') || (isInc ? 'Ingreso' : 'Gasto');
-  const tx = { id: uid(), type: isInc ? 'income' : 'expense', amount: +parseFloat(amt), category: cat, desc, date: nowYMD(), ts: new Date().toISOString() };
-  transactions.push(tx);
-  saveState();
-  renderAll();
-  updateReportsAuto();
-  toast('Transacción rápida agregada', 'success');
 }
 
 /* ---------- Renderers ---------- */
@@ -229,20 +178,17 @@ function renderAll(){
   renderHistory();
   renderGoals();
   updateFloating();
-  // No generar reportes por defecto; se generan cuando el usuario pide o cuando tx cambia (updateReportsAuto)
 }
 
-/* Balance */
 function renderBalance(){
   const inc = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const total = inc - exp;
-  $('#balance-value').textContent = formatMoney(total);
-  $('#home-income').textContent = formatMoney(inc);
-  $('#home-expense').textContent = formatMoney(exp);
+  $('#balance-value').textContent = fmtMoney(total);
+  $('#home-income').textContent = fmtMoney(inc);
+  $('#home-expense').textContent = fmtMoney(exp);
 }
 
-/* Recent */
 function renderRecent(){
   const zone = $('#recent-home');
   zone.innerHTML = '';
@@ -250,12 +196,11 @@ function renderRecent(){
   if (list.length === 0) { zone.innerHTML = '<p class="muted">No hay transacciones aún</p>'; return; }
   list.forEach(t => {
     const d = document.createElement('div'); d.className = 'tx-item';
-    d.innerHTML = `<div class="tx-left"><div style="font-weight:700">${escapeHtml(t.desc)}</div><div class="tx-cat">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div><div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} ${formatMoney(t.amount)}</div>`;
+    d.innerHTML = `<div class="tx-left"><div style="font-weight:700">${escapeHtml(t.desc)}</div><div class="tx-cat">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div><div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'} ${fmtMoney(t.amount)}</div>`;
     zone.appendChild(d);
   });
 }
 
-/* History */
 function renderHistory(){
   const zone = $('#tx-history');
   zone.innerHTML = '';
@@ -268,8 +213,7 @@ function renderHistory(){
     const meta = document.createElement('div'); meta.className = 'tx-cat'; meta.textContent = `${t.category} • ${formatDate(t.date)}`;
     left.appendChild(title); left.appendChild(meta);
 
-    const amount = document.createElement('div'); amount.className = `tx-amount ${t.type}`; amount.textContent = (t.type==='income'?'+':'-') + ' ' + formatMoney(t.amount);
-
+    const amount = document.createElement('div'); amount.className = `tx-amount ${t.type}`; amount.textContent = (t.type==='income'?'+':'-') + ' ' + fmtMoney(t.amount);
     const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center';
     const del = document.createElement('button'); del.className='btn-ghost'; del.textContent='Eliminar';
     del.addEventListener('click', () => deleteTransaction(t.id));
@@ -280,7 +224,6 @@ function renderHistory(){
   });
 }
 
-/* Goals */
 function renderGoals(){
   const zone = $('#goals-home');
   zone.innerHTML = '';
@@ -298,7 +241,7 @@ function renderGoals(){
     const fill = document.createElement('div'); fill.className = 'progress-fill'; fill.style.width = `${Math.min(100, (g.current / g.target)*100)}%`;
     prog.appendChild(fill);
 
-    // controls: quick contribution + delete
+    // controls
     const controls = document.createElement('div'); controls.style.marginTop='8px'; controls.style.display='flex'; controls.style.gap='8px';
     const inp = document.createElement('input'); inp.type='number'; inp.placeholder='Agregar Bs.'; inp.style.flex='1'; inp.style.padding='8px'; inp.style.borderRadius='8px'; inp.style.border='1px solid #eef3f6';
     const addBtn = document.createElement('button'); addBtn.className='btn-primary'; addBtn.textContent='Agregar';
@@ -307,15 +250,12 @@ function renderGoals(){
       if (v > 0) {
         g.current = +(g.current + v).toFixed(2);
         if (g.current > g.target) g.current = g.target;
-        saveState(); renderAll();
-        toast('Aporte agregado a la meta', 'success');
-        inp.value = '';
+        saveState(); renderAll(); toast('Aporte agregado a la meta', 'success'); inp.value = '';
       }
     });
     const delBtn = document.createElement('button'); delBtn.className='btn-ghost'; delBtn.textContent='Eliminar';
     delBtn.addEventListener('click', () => {
-      goals = goals.filter(x => x.id !== g.id);
-      saveState(); renderAll();
+      goals = goals.filter(x => x.id !== g.id); saveState(); renderAll();
     });
     controls.appendChild(inp); controls.appendChild(addBtn); controls.appendChild(delBtn);
 
@@ -324,34 +264,26 @@ function renderGoals(){
   });
 }
 
-/* Floating */
 function updateFloating(){
   const inc = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const total = inc - exp;
-  $('#floating').textContent = formatMoney(total);
+  $('#floating').textContent = fmtMoney(total);
 }
 
 /* ---------- Reports (auto update) ---------- */
 function updateReportsAuto(){
-  // If reports screen visible, regenerate using the current selected mode (if any)
-  // We'll generate both daily and weekly summary hidden canvases so reports are up-to-date when user opens them.
-  // For performance, only rerender overview and categories for today's date.
-  const today = nowYMD();
-  generateReportInternal('day', today);
-  generateReportInternal('week', today);
-}
-
-function setupReports(){
-  // intentionally left empty; handlers assigned in setupUI
+  // generar ambos para hoy en background (para que estén listos)
+  generateReportInternal('day', nowYMD(), true);
+  generateReportInternal('week', nowYMD(), true);
 }
 
 function generateReport(mode){
   const chosen = $('#report-date').value || nowYMD();
-  generateReportInternal(mode, chosen);
+  generateReportInternal(mode, chosen, false);
 }
 
-function generateReportInternal(mode, chosenDate){
+function generateReportInternal(mode, chosenDate, silent){
   const pc = $('#report-charts');
   const summary = $('#report-summary');
   pc.innerHTML = '';
@@ -362,7 +294,6 @@ function generateReportInternal(mode, chosenDate){
     title = `Reporte del día: ${formatDate(chosenDate)}`;
     list = transactions.filter(t => t.date === chosenDate);
   } else {
-    // week
     const ref = new Date(chosenDate);
     const day = ref.getDay();
     const diffToMonday = (day === 0) ? -6 : (1 - day);
@@ -376,15 +307,17 @@ function generateReportInternal(mode, chosenDate){
   }
 
   if (!list || list.length === 0) {
-    summary.textContent = `${title} — No hay transacciones para este periodo`;
+    if (!silent) summary.textContent = `${title} — No hay transacciones para este periodo`;
     return;
   }
 
   const totalInc = list.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const totalExp = list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
 
-  summary.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${title}</div>
-                       <div class="muted">Ingresos: ${formatMoney(totalInc)} · Gastos: ${formatMoney(totalExp)} · Balance: ${formatMoney(totalInc-totalExp)}</div>`;
+  if (!silent) {
+    summary.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${title}</div>
+                         <div class="muted">Ingresos: ${fmtMoney(totalInc)} · Gastos: ${fmtMoney(totalExp)} · Balance: ${fmtMoney(totalInc-totalExp)}</div>`;
+  }
 
   // overview donut
   const od = document.createElement('div'); od.className='donut';
@@ -401,13 +334,11 @@ function generateReportInternal(mode, chosenDate){
     pc.appendChild(cd);
   }
 
-  // destroy previous charts if exist
-  try {
-    if (chartOverview) { chartOverview.destroy(); chartOverview = null; }
-    if (chartCategories) { chartCategories.destroy(); chartCategories = null; }
-  } catch(e){ /* ignore */ }
+  // destruir charts previos
+  try { if (chartOverview) { chartOverview.destroy(); chartOverview = null; } } catch(e){}
+  try { if (chartCategories) { chartCategories.destroy(); chartCategories = null; } } catch(e){}
 
-  // create charts
+  // crear overview
   const ctxO = document.getElementById(`chart-overview-${mode}`).getContext('2d');
   chartOverview = new Chart(ctxO, {
     type: 'doughnut',
@@ -424,17 +355,17 @@ function generateReportInternal(mode, chosenDate){
     });
   }
 
-  // show list
+  // lista de transacciones
   const listDiv = document.createElement('div'); listDiv.style.marginTop='12px';
   listDiv.innerHTML = list.sort((a,b)=> new Date(b.ts) - new Date(a.ts)).map(t => `
     <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f2f6f9">
       <div style="flex:1"><div style="font-weight:700">${escapeHtml(t.desc)}</div><div class="muted">${escapeHtml(t.category)} • ${formatDate(t.date)}</div></div>
-      <div style="min-width:110px;text-align:right;font-weight:700">${t.type==='income'?'+':'-'} ${formatMoney(t.amount)}</div>
+      <div style="min-width:110px;text-align:right;font-weight:700">${t.type==='income'?'+':'-'} ${fmtMoney(t.amount)}</div>
     </div>`).join('');
   pc.appendChild(listDiv);
 }
 
-/* ---------- Utility: format date, toast ---------- */
+/* ---------- Utils ---------- */
 function formatDate(ymd){
   if (!ymd) return '';
   const d = new Date(ymd);
